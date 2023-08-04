@@ -1,0 +1,9 @@
+{
+    "factoryAddress": "0x897Cf16e383CA05Afa0a4a9457d98c0664e6540a",
+    "awsRegion": "us-east-1",
+    "esArrTokenAddress":"0x5C8760682D7aC60F40Bd9641A758F44B1214BAab",
+    "nftPoolFactoryAddress": "0xD8b4bacB5EF0987cE94e2823c4AEbEC31518C99d",
+    "gNftAddress" : "0x0F74EFEd2254498646A1596bfF8f88D8DB533afc",
+    "atDexRouterAddress" : "0x350705e22ab6B2F00C184113eE4E6414186Fd353",
+    "wethAddress" : "0xDBa960Fb9eF23637C4c009a69632B87323c40426"
+}

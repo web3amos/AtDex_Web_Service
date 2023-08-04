@@ -1,0 +1,12 @@
+[Unit]
+Description=Mario Webapp Service
+After=network.target
+
+[Service]
+Type=idle
+Restart=on-failure
+User=ubuntu
+ExecStart=/bin/bash -c 'cd ~/webservice && sudo ./start'
+
+[Install]
+WantedBy=default.target
