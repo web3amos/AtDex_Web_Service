@@ -425,9 +425,10 @@ Resources:
       Roles: 
        - !Ref EC2InstanceIAMRole
 
+  ## !! Please Pay attention on tables' DeletionPolicy !!
   EventsTable:
     Type: AWS::DynamoDB::Table
-    DeletionPolicy: Retain
+    DeletionPolicy: Retain 
     Properties:
       TableName: !Ref DynamoDBTableOne
       AttributeDefinitions:
