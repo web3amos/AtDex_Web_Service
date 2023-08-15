@@ -14,8 +14,6 @@ AWS.config.update({
 
 const dynamoDB = new AWS.DynamoDB.DocumentClient();
 
-let counter = 0;
-
 async function loadPairAddressesFromDB() {
   const params = {
       TableName: 'TokenPairs',
@@ -44,7 +42,22 @@ async function getTransactionDetails(transactionHash) {
   }
 }
 
+async function getUserLpBalance(pairAddress, userAddress) {
+  const pairContract = new ethers.Contract(pairAddress, pairAbi, provider);
+  try {
+    const balanceBigNumber = await pairContract.balanceOf(userAddress);
+    const decimals = await pairContract.decimals(); // 获取代币的小数位数
+    const adjustedBalance = balanceBigNumber.div(ethers.BigNumber.from("10").pow(decimals));
+    return adjustedBalance.toString(); 
+  } catch (error) {
+    logger.error(`Error fetching LP balance for user ${userAddress} with pair address ${pairAddress}: ${error}`);
+    return "0";
+  }
+}
+
+
 async function storeEventToDynamoDB(userID, transactionHash, eventName, blockNumber, eventData, timestamp, pairAddress) {
+  const lpBalance = await getUserLpBalance(pairAddress, userID);
   const params = {
     TableName: 'ADP1',
     Item: {
@@ -54,7 +67,8 @@ async function storeEventToDynamoDB(userID, transactionHash, eventName, blockNum
       'BlockNumber': blockNumber,
       'EventData': eventData,
       'Timestamp': timestamp,
-      'PairAddress': pairAddress
+      'PairAddress': pairAddress,
+      'LPBalance': lpBalance 
     }
   };
 
@@ -69,59 +83,75 @@ async function storeEventToDynamoDB(userID, transactionHash, eventName, blockNum
 }
 
 async function handleMintEvent(sender, amount0, amount1, event) {
-  counter++;
+  logger.info('Entering handleMintEvent function');
+  
   const timestamp = Math.floor(Date.now() / 1000);
   const transactionHash = event.transactionHash;
-  const userID = await getTransactionDetails(transactionHash);
-  logger.info(`Listening no.#${counter} Mint event at ${timestamp}:`);
 
+  try {
+      const userID = await getTransactionDetails(transactionHash);
+      logger.info(`UserID fetched for Mint: ${userID}`);
 
-  await storeEventToDynamoDB(
-    userID,
-    transactionHash,
-    'Mint',
-    event.blockNumber,
-    JSON.stringify(event),
-    timestamp,
-    event.address
-  );
-  logger.info(`Event object: ${JSON.stringify(event, null, 2)}`);
+      await storeEventToDynamoDB(
+          userID,
+          transactionHash,
+          'Mint',
+          event.blockNumber,
+          JSON.stringify(event),
+          timestamp,
+          event.address
+      );
+      logger.info(`Mint event object stored: ${JSON.stringify(event, null, 2)}`);
+  } catch (error) {
+      logger.error(`Error in handleMintEvent: ${error}`);
+  }
 }
 
 async function handleBurnEvent(sender, amount0, amount1, to, event) {
-  counter++;
+  logger.info('Entering handleBurnEvent function');
+  
   const timestamp = Math.floor(Date.now() / 1000);
   const transactionHash = event.transactionHash;
-  const userID = await getTransactionDetails(transactionHash);
-  logger.info(`Listening no.#${counter} Burn event at ${timestamp}:`);
 
-  await storeEventToDynamoDB(
-    userID,
-    transactionHash,
-    'Burn',
-    event.blockNumber,
-    JSON.stringify(event),
-    timestamp,
-    event.address
-  );
-  logger.info(`Event object: ${JSON.stringify(event, null, 2)}`);
+  try {
+      const userID = await getTransactionDetails(transactionHash);
+      logger.info(`UserID fetched for Burn: ${userID}`);
+
+      await storeEventToDynamoDB(
+          userID,
+          transactionHash,
+          'Burn',
+          event.blockNumber,
+          JSON.stringify(event),
+          timestamp,
+          event.address
+      );
+      logger.info(`Burn event object stored: ${JSON.stringify(event, null, 2)}`);
+  } catch (error) {
+      logger.error(`Error in handleBurnEvent: ${error}`);
+  }
 }
+
 
 async function start(provider) {
   const listenForMintBurnEvents = async () => {
     const pairAddresses = await loadPairAddressesFromDB();
     pairAddresses.forEach(pairAddress => {
       const pairContract = new ethers.Contract(pairAddress, pairAbi, provider);
-      pairContract.on('Mint', handleMintEvent);
-      pairContract.on('Burn', handleBurnEvent);
+      pairContract.on('Mint', (sender, amount0, amount1, event) => {
+        logger.info('Mint event detected');
+        handleMintEvent(sender, amount0, amount1, event);
+    });
+    
+    pairContract.on('Burn', (sender, amount0, amount1, to, event) => {
+        logger.info('Burn event detected');
+        handleBurnEvent(sender, amount0, amount1, to, event);
+    });
     });
   };
 
   await listenForMintBurnEvents();
 
-  setInterval(async () => {
-    await listenForMintBurnEvents();
-  }, 60000);
 }
 
 module.exports = {

@@ -10,7 +10,8 @@ const PairCreatedListener = require(`${PROJ_ROOT}/src/pairCreatedListener`)
 const tokenPairsScript = require(`${PROJ_ROOT}/src/utils/tokenPairsScript.js`);
 const BasePoolListener = require(`${PROJ_ROOT}/src/basePoolListener.js`)
 const GNftListener = require(`${PROJ_ROOT}/src/gNftListener.js`)
-const WEthListener = require(`${PROJ_ROOT}/src/wethListener.js`)
+const AtCoreRouterListener = require(`${PROJ_ROOT}/src/atCoreRouterListener.js`)
+const EsArrListener = require(`${PROJ_ROOT}/src/esArrListener.js`)
 
 const providerUrl = 'wss://testnet.era.zksync.dev/ws';
 let provider;
@@ -18,7 +19,6 @@ let reconnectTimeout = null;
 
 const EXPECTED_PONG_BACK = 15000;  
 const KEEP_ALIVE_CHECK_INTERVAL = 7500;  
-
 
 async function getSpNftHistoryData() {
   try {
@@ -65,17 +65,27 @@ async function startSwapListener() {
   }
 }
 
-async function startWEthListener() {
-  logger.info('WEthListener is starting');
+async function startEsArrListener(){
+  logger.info('EsArrListener is starting');
   try {
-    await WEthListener.start(provider);
+    await EsArrListener.start(provider);
   } catch (err) {
-    logger.error(`Error occurred in WEthListener.start: ${err}`);
-    console.error("Error occurred in WEthListener.start:", err);
-    setTimeout(startWEthListener, 30000);  // 30 seconds
+    logger.error(`Error occurred in SwapListener.start: ${err}`);
+    console.error("Error occurred in SwapListener.start:", err);
+    setTimeout(startEsArrListener, 30000);  // 30 seconds
   }
 }
 
+async function startAtCoreRouterListener() {
+  logger.info('atCoreRouterListener is starting');
+  try {
+    await AtCoreRouterListener.start(provider);
+  } catch (err) {
+    logger.error(`Error occurred in AtCoreRouterListener.start: ${err}`);
+    console.error("Error occurred in AtCoreRouterListener.start:", err);
+    setTimeout(startAtCoreRouterListener, 30000);  // 30 seconds
+  }
+}
 
 async function startAddLiqListener() {
   logger.info('AddLiqListener is starting');
@@ -140,11 +150,12 @@ async function startAllListeners() {
   startGNftListener();
   startPairCreatedListener();
   startSwapListener();
-  startWEthListener();
+  startAtCoreRouterListener();
   startAddLiqListener();
   startBasePoolListener();
+  startEsArrListener();
+  
 }
-
 
 function connectToProvider() {
   if (reconnectTimeout) {
@@ -194,9 +205,6 @@ function connectToProvider() {
     clearTimeout(pingTimeout);
     connectToProvider();
   });
-
 }
-
-
 
 connectToProvider();
