@@ -1,0 +1,1135 @@
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      -
+        Label:
+          default: "VPC CIDR"
+        Parameters:
+          - VpcCIDR
+      - 
+        Label:
+          default: "Subnet CIDR"
+        Parameters:
+          - PublicSubnet1CIDR
+          - PublicSubnet2CIDR
+          - PublicSubnet3CIDR
+          - PrivateSubnet1CIDR
+          - PrivateSubnet2CIDR
+          - PrivateSubnet3CIDR
+      - 
+        Label:  
+          default: "EC2 Parameters"
+        Parameters:
+          - InstanceType
+          - EC2InstanceSecurityGroupName
+          - KeyName
+          - AmazonImageID
+      # - 
+      #   Label:  
+      #     default: "SSH CIDR"
+      #   Parameters:
+      #     - SSHLocation
+
+Parameters:
+  VpcCIDR:  
+    Description: Please enter the IP range (CIDR notation) for this VPC
+    Type: String
+    Default: 10.0.0.0/16
+
+  PublicSubnet1CIDR:
+    Description: Please enter the IP range (CIDR notation) for public subset 1
+    Type: String
+    Default: 10.0.0.0/24
+
+  PublicSubnet2CIDR:
+    Description: Please enter the IP range (CIDR notation) for public subset 2
+    Type: String
+    Default: 10.0.1.0/24
+
+  PublicSubnet3CIDR:
+    Description: Please enter the IP range (CIDR notation) for public subset 3
+    Type: String
+    Default: 10.0.2.0/24
+
+  PrivateSubnet1CIDR:
+    Description: Please enter the IP range (CIDR notation) for private subset 1
+    Type: String
+    Default: 10.0.3.0/24
+
+  PrivateSubnet2CIDR:
+    Description: Please enter the IP range (CIDR notation) for private subset 2
+    Type: String 
+    Default: 10.0.4.0/24
+
+  PrivateSubnet3CIDR:
+    Description: Please enter the IP range (CIDR notation) for private subset 3
+    Type: String
+    Default: 10.0.5.0/24
+
+  # SSHLocation:
+  #   AllowedPattern: '(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})'
+  #   ConstraintDescription: must be a valid IP CIDR range of the form x.x.x.x/x.
+  #   Default: 0.0.0.0/0
+  #   Description: The IP address range that can be used to access the web server using SSH.
+    # MaxLength: '18'
+    # MinLength: '9'
+    # Type: String
+
+  InstanceType:
+    Description: WebApp EC2 instance type
+    Type: String
+    Default: t2.medium
+    AllowedValues: [t2.medium]
+
+  EC2InstanceSecurityGroupName:
+    Description: Security Group Name of Application
+    Type: String
+    Default: application
+
+  KeyName:
+    Description: Name of a EC2 KeyPair to enable SSH access to the instance
+    Type: AWS::EC2::KeyPair::KeyName
+    Default: aws-01
+    ConstraintDescription: Must be the name of an existing EC2 KeyPair
+
+  AmazonImageID:
+    Description: The ID of Amazon Machine Image(AMI)
+    Type: String
+    Default: "ami-00abf8199582bbab5"
+
+  DynamoDBTableOne:
+    Description: ADP season 1
+    Type: String
+    Default: "ADP1"
+
+  DynamoDBTableTwo:
+    Description: Token pairs list
+    Type: String
+    Default: "TokenPairs"
+
+  DynamoDBTableThree:
+    Type: String
+    Default: "spNftTransferEvents"
+  
+Resources:
+  ## Create the VPC
+  VPC: 
+    Type: AWS::EC2::VPC
+    Properties: 
+      CidrBlock: !Ref VpcCIDR
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      InstanceTenancy: default
+      Tags: 
+        - Key: Name
+          Value: Test VPC
+
+  ## Create the Internet Gateway
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties: 
+      Tags: 
+        - Key: Name
+          Value: Test InternetGateway
+
+  ## Attach Internet Gateway to VPC
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties: 
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VPC
+
+  ## Create Public Subnet1
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties: 
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: !Ref PublicSubnet1CIDR
+      MapPublicIpOnLaunch: true
+      Tags: 
+        - Key: Name
+          Value: Public Subnet 1
+      
+
+  ## Create Public Subnet2
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties: 
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      CidrBlock: !Ref PublicSubnet2CIDR
+      MapPublicIpOnLaunch: true
+      Tags: 
+        - Key: Name
+          Value: Public Subnet 2
+
+  ## Create Public Subnet3
+  PublicSubnet3:
+    Type: AWS::EC2::Subnet
+    Properties: 
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 2, !GetAZs '' ]
+      CidrBlock: !Ref PublicSubnet3CIDR
+      MapPublicIpOnLaunch: true
+      Tags: 
+        - Key: Name
+          Value: Public Subnet 3
+
+  ## Create PrivateSubnet1
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: !Ref PrivateSubnet1CIDR
+      MapPublicIpOnLaunch: false
+      Tags: 
+        - Key: Name
+          Value: Private Subnet 1
+  
+  ## Create PrivateSubnet2
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      CidrBlock: !Ref PrivateSubnet2CIDR
+      MapPublicIpOnLaunch: false
+      Tags: 
+        - Key: Name
+          Value: Private Subnet 2 
+
+  ## Create PrivateSubnet3
+  PrivateSubnet3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 2, !GetAZs '' ]
+      CidrBlock: !Ref PrivateSubnet3CIDR
+      MapPublicIpOnLaunch: false
+      Tags: 
+        - Key: Name
+          Value: Private Subnet 3
+
+  ## Create Public Route Table
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties: 
+      VpcId: !Ref VPC
+      Tags: 
+        - Key: Name
+          Value: Public Route Table
+
+  ## Create PublicRoute
+  PublicRoute:
+    Type: AWS::EC2::Route
+    Properties: 
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+
+  PublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet1
+
+  PublicSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet2
+
+  PublicSubnet3RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet3
+
+  ## Create Private Route Table
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties: 
+      VpcId: !Ref VPC
+      Tags: 
+        - Key: Name
+          Value: Private Route Table
+  
+  # # Create Private Route
+  # PrivateRoute:
+  #   Type: AWS::EC2::Route
+  #   Properties: 
+  #     RouteTableId: !Ref PrivateRouteTable
+  #     DestinationCidrBlock: 10.0.0.0/16
+
+  PrivateSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref PrivateSubnet1
+
+  PrivateSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref PrivateSubnet2
+
+  PrivateSubnet3RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref PrivateSubnet3 
+
+  ## Create AWS::EC2::SecurityGroup
+  EC2InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupDescription: Webapp application
+      GroupName: !Ref EC2InstanceSecurityGroupName
+      VpcId: !Ref VPC
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: 0
+          ToPort: 0
+          CidrIp: 0.0.0.0/0
+      SecurityGroupIngress:
+        - IpProtocol: -1
+          FromPort: 0
+          ToPort: 0
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+      Tags: 
+        - Key: Name
+          Value: EC2 Security Group
+
+  ## Create the EC2 Launch Template
+  asgLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: 'asg_launch_config'
+      LaunchTemplateData:
+        InstanceType: !Ref InstanceType
+        SecurityGroupIds: 
+          - !GetAtt EC2InstanceSecurityGroup.GroupId
+        KeyName: !Ref KeyName
+        ImageId: !Ref AmazonImageID
+        IamInstanceProfile:
+          Name: !Ref EC2InstanceProfile
+        BlockDeviceMappings:
+          - DeviceName: "/dev/sda1"
+            Ebs:
+              VolumeType: "gp3"
+              VolumeSize: "20"
+              DeleteOnTermination: "true"
+              Encrypted: true
+              KmsKeyId: !GetAtt EBSKey.Arn
+        UserData:
+          Fn::Base64: 
+            !Sub |
+              #!/bin/bash
+              set -e
+              set -x
+
+              # Update OS
+              sudo apt-get update
+              sudo apt-get upgrade -y
+              sleep 5
+
+              # Start the application
+              WEBAPP_ROOT=/home/ubuntu/webservice
+              cd $WEBAPP_ROOT
+
+              # Make sure start script is executable
+              sudo chmod +x start
+
+              # Run npm install to install dependencies
+              npm install
+
+              # Add webservice to systemd
+              apt-get install -y systemd
+              cp ./webapp.service /etc/systemd/system
+              chmod 644 /etc/systemd/system/webapp.service
+              systemctl daemon-reload
+              systemctl enable webapp.service
+              systemctl start webapp.service
+              
+              # Set up CloudWatch 
+              sudo cp cloudwatch_config.json /opt/cloudwatch-config.json
+              sudo /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:/opt/cloudwatch-config.json -s
+
+  asgWebApp:
+      Type: AWS::AutoScaling::AutoScalingGroup
+      Properties:
+        AutoScalingGroupName: !Sub ${AWS::StackName}-asg
+        AvailabilityZones:
+          - us-east-1a
+          - us-east-1b
+          - us-east-1c
+        Cooldown: '60'
+        DesiredCapacity: '1'
+        LaunchTemplate:
+          LaunchTemplateId: !Ref asgLaunchTemplate
+          Version: !GetAtt asgLaunchTemplate.LatestVersionNumber
+        MaxSize: '1'
+        MinSize: '1'
+        Tags:
+          - Key: Application
+            Value: WebApp
+            PropagateAtLaunch: "true"
+          - Key: Name
+            Value: !Sub ${AWS::StackName}-asg
+            PropagateAtLaunch: "true"
+        VPCZoneIdentifier:
+          - !Ref PublicSubnet1
+          - !Ref PublicSubnet2
+          - !Ref PublicSubnet3
+
+  EC2InstanceIAMRole:
+      Type: AWS::IAM::Role
+      Properties: 
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - ec2.amazonaws.com
+              Action:
+                - 'sts:AssumeRole'
+        Path: /
+        Policies: 
+          - PolicyName: DynamoDBAndCloudWatch
+            PolicyDocument: 
+              Version: "2012-10-17"
+              Statement: 
+                - Effect: Allow
+                  Action:
+                    - dynamodb:*
+                    - cloudwatch:*
+                  Resource: "*"
+        ManagedPolicyArns:
+          - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+          - arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
+
+
+  ## Create the IAM Profile
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties: 
+      Path: /
+      Roles: 
+       - !Ref EC2InstanceIAMRole
+
+  EventsTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    Properties:
+      TableName: !Ref DynamoDBTableOne
+      AttributeDefinitions:
+        - AttributeName: UserID
+          AttributeType: S
+        - AttributeName: Timestamp
+          AttributeType: N
+        - AttributeName: EventType
+          AttributeType: S
+      KeySchema:
+        - AttributeName: UserID
+          KeyType: HASH
+        - AttributeName: Timestamp
+          KeyType: RANGE
+      BillingMode: PAY_PER_REQUEST
+      GlobalSecondaryIndexes:
+      - IndexName: EventTypeIndex
+        KeySchema:
+          - AttributeName: EventType
+            KeyType: HASH
+          - AttributeName: Timestamp
+            KeyType: RANGE
+        Projection:
+          ProjectionType: ALL
+
+  TokenPairsTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    Properties:
+      TableName: !Ref DynamoDBTableTwo
+      AttributeDefinitions:
+        - AttributeName: token0
+          AttributeType: S
+        - AttributeName: token1
+          AttributeType: S
+      KeySchema:
+        - AttributeName: token0
+          KeyType: HASH
+        - AttributeName: token1
+          KeyType: RANGE
+      BillingMode: PAY_PER_REQUEST
+ 
+  SpNftTransferEventsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Ref DynamoDBTableThree
+      AttributeDefinitions:
+        - AttributeName: lpTokenAddress
+          AttributeType: S
+        - AttributeName: tokenId
+          AttributeType: N
+        - AttributeName: userAddress
+          AttributeType: S
+      KeySchema:
+        - AttributeName: lpTokenAddress
+          KeyType: HASH
+        - AttributeName: tokenId
+          KeyType: RANGE
+      BillingMode: PAY_PER_REQUEST
+      GlobalSecondaryIndexes:
+        - IndexName: UserLpIndex
+          KeySchema:
+            - AttributeName: userAddress
+              KeyType: HASH
+            - AttributeName: lpTokenAddress
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
+  GNftTransferEventsTable:
+    Type: 'AWS::DynamoDB::Table'
+    Properties:
+      TableName: 'gNftTransferEvents'
+      AttributeDefinitions:
+        - 
+          AttributeName: 'userAddress'
+          AttributeType: 'S'
+      KeySchema:
+        - 
+          AttributeName: 'userAddress'
+          KeyType: 'HASH'
+      BillingMode: PAY_PER_REQUEST
+      Tags:
+        - Key: 'Name'
+          Value: 'gNftTransferEvents'
+
+
+  LastProcessedBlock:
+    Type: 'AWS::DynamoDB::Table'
+    Properties:
+      TableName: LastProcessedBlock
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - 
+          AttributeName: listenerId
+          AttributeType: S
+      KeySchema:
+        - 
+          AttributeName: listenerId
+          KeyType: HASH
+
+
+  EBSKey:
+    Type: AWS::KMS::Key
+    Properties: 
+      Description: This Customer managed key is used for encrypted EBS volume.
+      EnableKeyRotation: true
+      KeyPolicy: 
+        Version: "2012-10-17"
+        Id: "EBS-key"
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Join 
+                - ''
+                - - 'arn:aws:iam::'
+                  - !Ref 'AWS::AccountId'
+                  - ':root'
+            Action: 
+              - "kms:*"
+            Resource: '*'
+          - Sid: "Allow access for Key Administrators"
+            Effect: Allow
+            Principal:
+              AWS: !Join
+                - ''
+                - - 'arn:aws:iam::'
+                  - !Ref 'AWS::AccountId'
+                  - ':user/mario_prod'
+
+            Action:
+              - kms:Create*
+              - kms:Describe*
+              - kms:Enable*
+              - kms:List*
+              - kms:Put*
+              - kms:Update*
+              - kms:Revoke*
+              - kms:Disable*
+              - kms:Get*
+              - kms:Delete*
+              - kms:TagResource
+              - kms:UntagResource
+              - kms:ScheduleKeyDeletion
+              - kms:CancelKeyDeletion
+            Resource: "*"
+          - Sid: "Allow use of the key"
+            Effect: Allow
+            Principal:
+              AWS: !Join 
+                - ''
+                - - 'arn:aws:iam::'
+                  - !Ref 'AWS::AccountId'
+                  - ':role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling'
+            Action:
+              - kms:Encrypt
+              - kms:Decrypt
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey*
+              - kms:DescribeKey
+            Resource: '*'
+          - Sid: "Allow attachment of persistent resources"
+            Effect: Allow
+            Principal:
+              AWS: !Join 
+                - ''
+                - - 'arn:aws:iam::'
+                  - !Ref 'AWS::AccountId'
+                  - ':role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling'
+            Action:
+              - kms:CreateGrant
+              - kms:ListGrants
+              - kms:RevokeGrant
+            Resource: '*'
+            Condition: 
+              Bool:
+                kms:GrantIsForAWSResource: true
+
+  EBSKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: alias/ebsKey
+      TargetKeyId: !Ref EBSKey
+
+  MyLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: CheckUserSwap
+      Handler: index.lambda_handler
+      Role: !Join
+        - ''
+        - - 'arn:aws:iam::'
+          - !Ref 'AWS::AccountId'
+          - ':role/m_lambda'
+      Code:
+        ZipFile: |
+          import boto3
+          import json
+
+          def lambda_handler(event, context):
+              dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
+              table = dynamodb.Table('ADP1')
+              
+              userID = event.get('userID', None)
+              
+              if not userID:
+                  return {
+                      'statusCode': 400,
+                      'body': json.dumps('Missing userID')
+                  }
+                  
+              try:
+                  response = table.query(
+                      KeyConditionExpression=boto3.dynamodb.conditions.Key('UserID').eq(userID)
+                  )
+              except Exception as e:
+                  print(e)
+                  return {
+                      'statusCode': 500,
+                      'body': json.dumps('Error reading from DynamoDB')
+                  }
+              
+              items = response.get('Items', [])
+              swappedItems = [item for item in items if item.get('HasSwapped', 0) == 1]
+              
+              if swappedItems:
+                  return {
+                      'statusCode': 200,
+                      'body': json.dumps({'swap': 1})
+                  }
+              else:
+                  return {
+                      'statusCode': 200,
+                      'body': json.dumps({'swap': 0})
+                  }
+
+      Runtime: python3.8
+      Timeout: 10
+
+  MyLambdaFunction2:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: GetTokenPairs
+      Handler: index.lambda_handler
+      Role: !Join
+        - ''
+        - - 'arn:aws:iam::'
+          - !Ref 'AWS::AccountId'
+          - ':role/m_lambda'
+      Code:
+        ZipFile: |
+          import boto3
+          import json
+
+          def lambda_handler(event, context):
+              dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
+              table = dynamodb.Table('TokenPairs')
+              
+              response = table.scan()
+              items = response['Items']
+              
+              return {
+                  'statusCode': 200,
+                  'body': json.dumps(items)
+              }
+      
+      Runtime: python3.8
+      Timeout: 10
+
+  MyLambdaFunction3:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: GetSpNftTokenIdsByAddress
+      Handler: index.lambda_handler
+      Role: !Join
+        - ''
+        - - 'arn:aws:iam::'
+          - !Ref 'AWS::AccountId'
+          - ':role/m_lambda'
+      Code:
+        ZipFile: |
+          import boto3
+          import json
+
+          def lambda_handler(event, context):
+              dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
+              table = dynamodb.Table('spNftTransferEvents')
+              
+              queryStringParameters = event.get('queryStringParameters', {})
+              userAddress = queryStringParameters.get('userAddress', None)
+              lpTokenAddress = queryStringParameters.get('lpTokenAddress', None)
+              
+              if not userAddress or not lpTokenAddress:
+                  return {
+                      'statusCode': 400,
+                      'body': 'Missing userAddress or lpTokenAddress'
+                  }
+                  
+              try:
+                  response = table.query(
+                      IndexName='UserLpIndex',
+                      KeyConditionExpression='userAddress = :userAddressValue AND lpTokenAddress = :lpTokenAddressValue',
+                      ExpressionAttributeValues={
+                          ':userAddressValue': userAddress,
+                          ':lpTokenAddressValue': lpTokenAddress
+                      }
+                  )
+
+              except Exception as e:
+                  print(e)
+                  return {
+                      'statusCode': 500,
+                      'body': 'Error reading from DynamoDB'
+                  }
+              
+              items = response.get('Items', [])
+              tokenIds = [int(item.get('tokenId', 0)) for item in items]
+              
+              return {
+                  'statusCode': 200,
+                  'body': json.dumps({'tokenIds': tokenIds})
+              }
+
+
+
+
+      Runtime: python3.8
+      Timeout: 10
+
+  MyLambdaFunction4:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: GetGNftTokenIdsByAddress
+      Handler: index.lambda_handler
+      Role: !Join
+        - ''
+        - - 'arn:aws:iam::'
+          - !Ref 'AWS::AccountId'
+          - ':role/m_lambda'
+      Code:
+        ZipFile: |
+          import boto3
+          import json
+          from decimal import Decimal
+
+          class DecimalEncoder(json.JSONEncoder):
+              def default(self, o):
+                  if isinstance(o, Decimal):
+                      return str(o)
+                  return super(DecimalEncoder, self).default(o)
+
+          dynamoDB = boto3.resource('dynamodb', region_name='us-east-1')
+          table = dynamoDB.Table('gNftTransferEvents')
+
+          def lambda_handler(event, context):
+              try:
+                  user_address = event['queryStringParameters']['userAddress']
+              except KeyError:
+                  return {
+                      'statusCode': 400,
+                      'body': json.dumps({'error': 'The parameter userAddress is required.'})
+                  }
+
+              try:
+                  response = table.get_item(Key={'userAddress': user_address})
+                  item = response.get('Item')
+                  if item:
+                      token_ids = item.get('tokenIds')
+                      if isinstance(token_ids, set):
+                          token_ids = list(token_ids)  
+                  else:
+                      token_ids = []
+                  
+                  return {
+                      'statusCode': 200,
+                      'body': json.dumps({'tokenIds': token_ids}, cls=DecimalEncoder) # 使用自定义的JSON Encoder
+                  }
+              except Exception as e:
+                  error_message = str(e)
+                  print(f"Failed to get item. Error: {error_message}")
+                  
+                  return {
+                      'statusCode': 500,
+                      'body': json.dumps({'error': 'Unable to complete the query.', 'detail': error_message})
+                  }
+
+
+      Runtime: python3.8
+      Timeout: 10
+
+  MyGetMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MyApi
+      ResourceId: !Ref MyResource
+      HttpMethod: GET
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS
+        IntegrationHttpMethod: POST
+        Uri: 
+          Fn::Sub: 
+            - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${lambdaArn}/invocations
+            - lambdaArn: !GetAtt MyLambdaFunction2.Arn
+        IntegrationResponses:
+          - StatusCode: '200'
+            ResponseTemplates:
+              application/json: ""
+        PassthroughBehavior: WHEN_NO_MATCH
+      MethodResponses:
+        - StatusCode: '200'
+          ResponseModels:
+            application/json: !Ref MyResponseModel
+  
+  MyPostMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MyApi
+      ResourceId: !Ref MyPostResource
+      HttpMethod: POST
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS
+        IntegrationHttpMethod: POST
+        Uri: 
+          Fn::Sub: 
+            - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${lambdaArn}/invocations
+            - lambdaArn: !GetAtt MyLambdaFunction.Arn
+        IntegrationResponses:
+          - StatusCode: '200'
+            ResponseTemplates:
+              application/json: ""
+        PassthroughBehavior: WHEN_NO_MATCH
+      MethodResponses:
+        - StatusCode: '200'
+          ResponseModels:
+            application/json: !Ref MyResponseModel
+
+  MyGetMethod3:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MyApi
+      ResourceId: !Ref MyResource2
+      HttpMethod: GET
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: 
+          Fn::Sub: 
+            - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${lambdaArn}/invocations
+            - lambdaArn: !GetAtt MyLambdaFunction3.Arn
+        IntegrationResponses:
+          - StatusCode: '200'
+            ResponseTemplates:
+              application/json: ""
+        PassthroughBehavior: WHEN_NO_MATCH
+      MethodResponses:
+        - StatusCode: '200'
+          ResponseModels:
+            application/json: !Ref MyResponseModel
+
+  MyGetMethod4:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MyApi
+      ResourceId: !Ref MyResource3
+      HttpMethod: GET
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: 
+          Fn::Sub: 
+            - arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${lambdaArn}/invocations
+            - lambdaArn: !GetAtt MyLambdaFunction4.Arn
+        IntegrationResponses:
+          - StatusCode: '200'
+            ResponseTemplates:
+              application/json: ""
+        PassthroughBehavior: WHEN_NO_MATCH
+      MethodResponses:
+        - StatusCode: '200'
+          ResponseModels:
+            application/json: !Ref MyResponseModel
+
+
+  MyResponseModel:
+    Type: AWS::ApiGateway::Model
+    Properties:
+      RestApiId: !Ref MyApi
+      ContentType: application/json
+      Schema: |
+        {
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "type": "object",
+          "properties": {
+            "statusCode": {
+              "type": "integer"
+            },
+            "body": {
+              "type": "string"
+            }
+          },
+          "required": ["statusCode", "body"]
+        }
+    Type: AWS::ApiGateway::Model
+    Properties:
+      RestApiId: !Ref MyApi
+      ContentType: application/json
+      Schema: |
+        {
+          "$schema": "http://json-schema.org/draft-04/schema#",
+          "type": "object",
+          "properties": {
+            "swap": {
+              "type": "integer"
+            }
+          },
+          "required": ["swap"]
+        }
+
+  MyDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn: [MyPostMethod, MyGetMethod, MyGetMethod3, MyGetMethod4]
+    Properties:
+      RestApiId: !Ref MyApi
+      Description: 'Deployment for MyApi'
+      StageName: 'prod'
+
+  MyApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: MyApi
+# ************************** resource
+  MyPostResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref MyApi
+      ParentId: !GetAtt MyApi.RootResourceId
+      PathPart: v1
+
+  MyResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref MyApi
+      ParentId: !GetAtt MyApi.RootResourceId
+      PathPart: GetTokenPairs
+
+  MyResource2:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref MyApi
+      ParentId: !GetAtt MyApi.RootResourceId
+      PathPart: GetSpNftTokenIds
+
+  MyResource3:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref MyApi
+      ParentId: !GetAtt MyApi.RootResourceId
+      PathPart: GetGNftTokenIds
+
+
+# *************************** Lambda permission 
+
+  MyLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref MyLambdaFunction
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MyApi}/*
+  
+  MyLambdaPermission2:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref MyLambdaFunction2
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MyApi}/*
+
+  MyLambdaPermission3:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref MyLambdaFunction3
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MyApi}/* 
+  
+  MyLambdaPermission4:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref MyLambdaFunction4
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MyApi}/* 
+
+Outputs:
+  MyApiUrl:
+    Value: 
+      Fn::Sub: 
+        - https://${apiId}.execute-api.${AWS::Region}.amazonaws.com/${stageName}
+        - apiId: !Ref MyApi
+          stageName: 'prod'
+    Description: URL of the API Gateway
+
+  ## Export VPC ID
+  VPC:
+    Description: VPC ID
+    Export:
+      Name: !Sub ${AWS::StackName}-VPC
+    Value: !Ref VPC
+
+  ## Export Public Subnet 1 
+  PublicSubnet1:
+    Description: Public Subnet 1 ID
+    Export:
+      Name: !Sub ${AWS::StackName}-PublicSubnet1
+    Value: !Ref PublicSubnet1
+
+  ## Export Public Subnet 2
+  PublicSubnet2:
+    Description: Public Subnet 2 ID
+    Export:
+      Name: !Sub ${AWS::StackName}-PublicSubnet2
+    Value: !Ref PublicSubnet2
+
+  ## Export Public Subnet 3
+  PublicSubnet3:
+    Description: Public Subnet 3 ID
+    Export:
+      Name: !Sub ${AWS::StackName}-PublicSubnet3
+    Value: !Ref PublicSubnet3
+
+  ## Export Private Subnet 1
+  PrivateSubnet1:
+    Description: Private Subnet 1 ID
+    Export:
+      Name: !Sub ${AWS::StackName}-PrivateSubnet1
+    Value: !Ref PrivateSubnet1
+
+  ## Export Private Subnet 2
+  PrivateSubnet2:
+    Description: Private Subnet 2 ID
+    Export:
+      Name: !Sub ${AWS::StackName}-PrivateSubnet2
+    Value: !Ref PrivateSubnet2
+
+  ## Export Private Subnet 3
+  PrivateSubnet3:
+    Description: Private Subnet 3 ID
+    Export:
+      Name: !Sub ${AWS::StackName}-PrivateSubnet3
+    Value: !Ref PrivateSubnet3
+  
+  EC2InstanceSecurityGroup:
+    Description: EC2 Instance Security Group of the newly created EC2 instance
+    Export:
+      Name: !Sub ${AWS::StackName}-EC2InstanceSecurityGroup
+    Value: !Ref EC2InstanceSecurityGroup
+
+
+
+  asgLaunchTemplate:
+    Description: Cloud template
+    Export:
+      Name: !Sub ${AWS::StackName}-asgLaunchTemplate
+    Value: !Ref asgLaunchTemplate
+
+  asgWebApp:
+    Description: Auto Scaling group
+    Export:
+      Name: !Sub ${AWS::StackName}-asgWebApp
+    Value: !Ref asgWebApp
+
+  EC2InstanceIAMRole:
+    Description: EC2 Instance IAM Role
+    Export:
+      Name: !Sub ${AWS::StackName}-EC2InstanceIAMRole
+    Value: !Ref EC2InstanceIAMRole
+  
+  EC2InstanceProfile:
+    Description: EC2 Instance Profile
+    Export:
+      Name: !Sub ${AWS::StackName}-EC2InstanceProfile
+    Value: !Ref EC2InstanceProfile
+
+  EBSKey:
+    Description: EBS Key
+    Export:
+      Name: !Sub ${AWS::StackName}-EBSKey
+    Value: !Ref EBSKey
+
+
+# TODO:
+
+# CORS (Cross-Origin Resource Sharing): CORS is a web standard for controlling which websites can access your API. You can configure your API Gateway to accept requests only from your frontend website.
+
+# Use HTTPS: Make sure all communication between your frontend and backend is encrypted. This helps to prevent data leaks during transmission.
+
+# Authentication and Authorization: Only authenticated users should be able to access your API. You can use JWTs (JSON Web Tokens) for this. First, your frontend needs to obtain a JWT when a user logs in, and then include this JWT in the header every time it makes a request to the API. On the backend, you need to verify this JWT to confirm that the request comes from an authenticated user. You can further restrict users to only accessing their own data.
+
+# Rate Limiting and Abuse Prevention: You can set rate limiting rules on API Gateway to prevent users or attackers from sending a large number of requests in a short period of time, which could potentially cause your backend servers to crash.
