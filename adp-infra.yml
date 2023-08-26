@@ -78,8 +78,8 @@ Parameters:
   InstanceType:
     Description: WebApp EC2 instance type
     Type: String
-    Default: t2.medium
-    AllowedValues: [t2.medium]
+    Default: t2.micro
+    AllowedValues: [t2.micro]
 
   EC2InstanceSecurityGroupName:
     Description: Security Group Name of Application
