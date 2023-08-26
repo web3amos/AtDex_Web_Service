@@ -106,5 +106,3 @@ check ```AvailabilityZone``` for your profile
 ```
 aws ec2 describe-availability-zones --profile=[profile_name]
 ```
-
-### test line
